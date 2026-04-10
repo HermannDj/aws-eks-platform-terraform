@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.5"
 
   backend "s3" {
-    bucket         = "eks-platform-terraform-state"
+    bucket         = "eks-platform-tfstate-619071315221"
     key            = "dev/terraform.tfstate"
     region         = "ca-central-1"
     dynamodb_table = "eks-platform-terraform-locks"
