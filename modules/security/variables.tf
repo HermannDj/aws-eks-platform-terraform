@@ -19,9 +19,15 @@ variable "secret_recovery_window_days" {
 }
 
 variable "db_username" { type = string }
-variable "db_password" { type = string; sensitive = true }
-variable "db_host"     { type = string }
-variable "db_name"     { type = string; default = "appdb" }
+variable "db_password" {
+  type      = string
+  sensitive = true
+}
+variable "db_host" { type = string }
+variable "db_name" {
+  type    = string
+  default = "appdb"
+}
 
 variable "oidc_provider_arn" {
   description = "ARN OIDC provider EKS (output du module eks)"

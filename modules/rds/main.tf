@@ -25,7 +25,7 @@ resource "aws_db_subnet_group" "this" {
 # ─── Security Group ───────────────────────────────────────────────────────────
 resource "aws_security_group" "rds" {
   name        = "${local.name}-rds-sg"
-  description = "Security group RDS PostgreSQL — accès depuis EKS nodes uniquement"
+  description = "Security group RDS PostgreSQL - access from EKS nodes only"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -75,7 +75,7 @@ resource "aws_db_instance" "this" {
   identifier = "${local.name}-postgres"
 
   engine         = "postgres"
-  engine_version = "15.4"
+  engine_version = "15.10"
   instance_class = var.instance_class
 
   db_name  = var.database_name
@@ -92,18 +92,18 @@ resource "aws_db_instance" "this" {
   vpc_security_group_ids = [aws_security_group.rds.id]
   parameter_group_name   = aws_db_parameter_group.this.name
 
-  multi_az               = var.multi_az
-  publicly_accessible    = false
-  deletion_protection    = var.deletion_protection
-  skip_final_snapshot    = var.skip_final_snapshot
+  multi_az                  = var.multi_az
+  publicly_accessible       = false
+  deletion_protection       = var.deletion_protection
+  skip_final_snapshot       = var.skip_final_snapshot
   final_snapshot_identifier = var.skip_final_snapshot ? null : "${local.name}-final-snapshot"
 
   backup_retention_period = var.backup_retention_days
   backup_window           = "03:00-04:00"
   maintenance_window      = "Mon:04:00-Mon:05:00"
 
-  auto_minor_version_upgrade  = true
-  copy_tags_to_snapshot       = true
+  auto_minor_version_upgrade   = true
+  copy_tags_to_snapshot        = true
   performance_insights_enabled = var.performance_insights_enabled
 
   tags = merge(local.common_tags, { Name = "${local.name}-postgres" })

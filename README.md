@@ -201,6 +201,75 @@ terraform destroy -var="db_password=YourSecurePassword123!"
 
 ---
 
+## Live deployment proof
+
+> Deployed 2026-04-10 — `ca-central-1` — destroyed after demo to avoid costs.
+
+### EKS cluster — 3 nodes Ready
+
+```
+$ kubectl get nodes
+NAME                                           STATUS   ROLES    AGE   VERSION
+ip-10-0-35-123.ca-central-1.compute.internal   Ready    <none>   60m   v1.30.14-eks-f69f56f
+ip-10-0-37-206.ca-central-1.compute.internal   Ready    <none>   23m   v1.30.14-eks-f69f56f
+ip-10-0-62-187.ca-central-1.compute.internal   Ready    <none>   60m   v1.30.14-eks-f69f56f
+```
+
+### All pods Running — IRSA verified
+
+```
+$ kubectl get pods -A
+NAMESPACE     NAME                                            READY   STATUS    AGE
+demo          demo-app-568b784f7c-5kggh                       1/1     Running   8m
+demo          demo-app-568b784f7c-zhp22                       1/1     Running   7m
+kube-system   aws-load-balancer-controller-7689685cb5-d8ndb   1/1     Running   8m   ← IRSA
+kube-system   aws-load-balancer-controller-7689685cb5-k9crc   1/1     Running   7m   ← IRSA
+kube-system   aws-node-qr6qd                                  2/2     Running   60m
+kube-system   coredns-68c6b7b454-kvgwx                        1/1     Running   86m
+kube-system   kube-proxy-5w82f                                1/1     Running   60m
+```
+
+### AWS Load Balancer Controller created a real ALB
+
+```
+$ kubectl get ingress -n demo
+NAME           CLASS   HOSTS   ADDRESS                                                                 PORTS
+demo-ingress   <none>   *      k8s-demo-demoingr-1a750c6c0e-1160151584.ca-central-1.elb.amazonaws.com  80
+
+$ curl http://k8s-demo-demoingr-1a750c6c0e-1160151584.ca-central-1.elb.amazonaws.com
+<title>Welcome to nginx!</title>  ✓
+```
+
+### RDS + ElastiCache available
+
+```
+$ aws rds describe-db-instances --query "DBInstances[?DBInstanceIdentifier=='eks-platform-dev-postgres'].{ID:DBInstanceIdentifier,Status:DBInstanceStatus,Version:EngineVersion}" --output table
++-----------------------------+------------+-----------+
+|             ID              |   Status   |  Version  |
++-----------------------------+------------+-----------+
+|  eks-platform-dev-postgres  | available  |  15.10    |
++-----------------------------+------------+-----------+
+
+$ aws elasticache describe-replication-groups --query "ReplicationGroups[?ReplicationGroupId=='eks-platform-dev-redis'].{ID:ReplicationGroupId,Status:Status}" --output table
++-------------------------+-------------+
+|           ID            |   Status    |
++-------------------------+-------------+
+|  eks-platform-dev-redis |  available  |
++-------------------------+-------------+
+```
+
+### Terraform outputs
+
+```
+cluster_name           = "eks-platform-dev"
+vpc_id                 = "vpc-01cb562519697dbf8"
+nat_gateway_public_ips = ["52.60.219.163"]
+lbc_role_arn           = "arn:aws:iam::619071315221:role/eks-platform-dev-aws-load-balancer-controller"
+secrets_reader_role_arn = "arn:aws:iam::619071315221:role/eks-platform-dev-secrets-reader"
+```
+
+---
+
 ## CI/CD pipeline
 
 ```

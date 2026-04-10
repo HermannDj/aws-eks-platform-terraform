@@ -37,13 +37,13 @@ module "vpc" {
 }
 
 module "eks" {
-  source              = "../../modules/eks"
-  project             = var.project
-  environment         = "prod"
-  vpc_id              = module.vpc.vpc_id
-  private_subnet_ids  = module.vpc.private_subnet_ids
-  public_subnet_ids   = module.vpc.public_subnet_ids
-  kubernetes_version  = "1.29"
+  source             = "../../modules/eks"
+  project            = var.project
+  environment        = "prod"
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  public_subnet_ids  = module.vpc.public_subnet_ids
+  kubernetes_version = "1.29"
   # Prod : accès privé uniquement (pas d'API server public)
   endpoint_public_access = false
   node_instance_types    = ["t3.medium"]

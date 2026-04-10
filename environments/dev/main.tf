@@ -57,7 +57,7 @@ module "eks" {
   private_subnet_ids = module.vpc.private_subnet_ids
   public_subnet_ids  = module.vpc.public_subnet_ids
 
-  kubernetes_version = "1.29"
+  kubernetes_version = "1.30"
 
   # Dev : accès public à l'API server (pas de bastion nécessaire)
   endpoint_public_access = true
@@ -109,16 +109,16 @@ module "rds" {
   eks_nodes_security_group_id = module.eks.nodes_security_group_id
 
   # Dev : db.t3.micro = Free Tier, single-AZ
-  instance_class  = "db.t3.micro"
-  multi_az        = false
+  instance_class    = "db.t3.micro"
+  multi_az          = false
   allocated_storage = 20
 
   database_name     = var.db_name
   database_username = var.db_username
   database_password = var.db_password
 
-  deletion_protection = false
-  skip_final_snapshot = true
+  deletion_protection   = false
+  skip_final_snapshot   = true
   backup_retention_days = 1
 
   tags = local.common_tags

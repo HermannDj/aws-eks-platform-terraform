@@ -145,25 +145,21 @@ resource "aws_iam_role_policy" "secrets_reader" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
+    Statement = concat(
+      [{
         Effect = "Allow"
         Action = [
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ]
-        Resource = [
-          aws_secretsmanager_secret.db_credentials.arn
-        ]
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["kms:Decrypt"]
-        Resource = var.use_kms_cmk ? [aws_kms_key.main[0].arn] : ["*"]
-        Condition = var.use_kms_cmk ? {
-          StringEquals = { "kms:ViaService" = "secretsmanager.${data.aws_region.current.name}.amazonaws.com" }
-        } : null
-      }
-    ]
+        Resource = [aws_secretsmanager_secret.db_credentials.arn]
+      }],
+      var.use_kms_cmk ? [{
+        Effect    = "Allow"
+        Action    = ["kms:Decrypt"]
+        Resource  = [aws_kms_key.main[0].arn]
+        Condition = { StringEquals = { "kms:ViaService" = "secretsmanager.${data.aws_region.current.name}.amazonaws.com" } }
+      }] : []
+    )
   })
 }
