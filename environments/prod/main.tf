@@ -1,0 +1,121 @@
+terraform {
+  required_version = ">= 1.5"
+  backend "s3" {
+    bucket         = "eks-platform-terraform-state"
+    key            = "prod/terraform.tfstate"
+    region         = "ca-central-1"
+    dynamodb_table = "eks-platform-terraform-locks"
+    encrypt        = true
+  }
+  required_providers {
+    aws = { source = "hashicorp/aws", version = "~> 5.0" }
+    tls = { source = "hashicorp/tls", version = "~> 4.0" }
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+  default_tags {
+    tags = {
+      Project     = var.project
+      Environment = "prod"
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
+module "vpc" {
+  source             = "../../modules/vpc"
+  project            = var.project
+  environment        = "prod"
+  vpc_cidr           = "10.2.0.0/16"
+  availability_zones = ["ca-central-1a", "ca-central-1b", "ca-central-1d"]
+  # Prod : 1 NAT/AZ pour HA ($0.045/h × 3 AZ)
+  single_nat_gateway       = false
+  flow_logs_retention_days = 30
+  tags                     = {}
+}
+
+module "eks" {
+  source              = "../../modules/eks"
+  project             = var.project
+  environment         = "prod"
+  vpc_id              = module.vpc.vpc_id
+  private_subnet_ids  = module.vpc.private_subnet_ids
+  public_subnet_ids   = module.vpc.public_subnet_ids
+  kubernetes_version  = "1.29"
+  # Prod : accès privé uniquement (pas d'API server public)
+  endpoint_public_access = false
+  node_instance_types    = ["t3.medium"]
+  node_desired_size      = 3
+  node_min_size          = 2
+  node_max_size          = 10
+  tags                   = {}
+}
+
+module "security" {
+  source                      = "../../modules/security"
+  project                     = var.project
+  environment                 = "prod"
+  use_kms_cmk                 = true
+  secret_recovery_window_days = 30
+  db_username                 = "dbadmin"
+  db_password                 = var.db_password
+  db_host                     = module.rds.db_instance_address
+  oidc_provider_arn           = module.eks.oidc_provider_arn
+  oidc_provider_url           = module.eks.oidc_provider_url
+  tags                        = {}
+}
+
+module "rds" {
+  source                      = "../../modules/rds"
+  project                     = var.project
+  environment                 = "prod"
+  vpc_id                      = module.vpc.vpc_id
+  database_subnet_ids         = module.vpc.database_subnet_ids
+  eks_nodes_security_group_id = module.eks.nodes_security_group_id
+  kms_key_arn                 = module.security.kms_key_arn
+  instance_class              = "db.t3.medium"
+  multi_az                    = true
+  allocated_storage           = 100
+  max_allocated_storage       = 500
+  deletion_protection         = true
+  skip_final_snapshot         = false
+  backup_retention_days       = 30
+  database_password           = var.db_password
+  tags                        = {}
+}
+
+module "elasticache" {
+  source                      = "../../modules/elasticache"
+  project                     = var.project
+  environment                 = "prod"
+  vpc_id                      = module.vpc.vpc_id
+  database_subnet_ids         = module.vpc.database_subnet_ids
+  eks_nodes_security_group_id = module.eks.nodes_security_group_id
+  node_type                   = "cache.r6g.large"
+  num_cache_clusters          = 2
+  tags                        = {}
+}
+
+module "alb" {
+  source            = "../../modules/alb"
+  project           = var.project
+  environment       = "prod"
+  vpc_id            = module.vpc.vpc_id
+  oidc_provider_arn = module.eks.oidc_provider_arn
+  oidc_provider_url = module.eks.oidc_provider_url
+  tags              = {}
+}
+
+module "monitoring" {
+  source             = "../../modules/monitoring"
+  project            = var.project
+  environment        = "prod"
+  cluster_name       = module.eks.cluster_name
+  oidc_provider_arn  = module.eks.oidc_provider_arn
+  oidc_provider_url  = module.eks.oidc_provider_url
+  alarm_email        = var.alarm_email
+  log_retention_days = 90
+  tags               = {}
+}
