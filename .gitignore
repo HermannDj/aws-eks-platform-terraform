@@ -1,0 +1,11 @@
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.terraform.lock.hcl
+*.auto.tfvars
+!example.auto.tfvars
+.env
+*.pem
+*.key
+infracost-breakdown.json
