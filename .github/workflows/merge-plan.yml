@@ -1,0 +1,35 @@
+name: Post-merge Plan
+
+on:
+  push:
+    branches: [main]
+    paths: ["**.tf", ".github/workflows/**"]
+  workflow_dispatch:
+
+env:
+  TF_VERSION: "1.7.4"
+
+jobs:
+  plan:
+    name: "plan ${{ matrix.env }}"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [dev, staging, prod]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: "${{ env.TF_VERSION }}" }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ca-central-1
+      - name: Terraform init
+        run: terraform init
+        working-directory: environments/${{ matrix.env }}
+      - name: Terraform plan
+        run: terraform plan -no-color -input=false -var="db_password=${{ secrets.DB_PASSWORD }}"
+        working-directory: environments/${{ matrix.env }}

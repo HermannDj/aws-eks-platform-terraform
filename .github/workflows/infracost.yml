@@ -1,0 +1,37 @@
+name: Infracost
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ["**.tf"]
+  workflow_dispatch:
+
+jobs:
+  infracost:
+    name: "cost estimate"
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Infracost breakdown — dev
+        run: |
+          infracost breakdown \
+            --path environments/dev \
+            --terraform-var="db_password=placeholder" \
+            --format json \
+            --out-file /tmp/infracost-dev.json
+
+      - name: Comment PR with cost estimate
+        uses: infracost/actions/comment@v3
+        with:
+          path: /tmp/infracost-dev.json
+          behavior: update
